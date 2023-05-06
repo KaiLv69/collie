@@ -1,8 +1,9 @@
-import os.path
+import os
 import sys
 import operator
 from collections import OrderedDict
 from itertools import chain
+from pathlib import Path
 
 import tqdm
 import numpy as np
@@ -267,6 +268,7 @@ class InplaceZeroTrainer:
                 """
         print(f"***** Running {eval_prefix} *****")
         print(f"  Num examples: {len(dataset)}")
+        print(f"  Current Epoch: {epoch}")
         print(f"  Batch size: {self.collie_args.per_device_eval_batch_size}")
 
         with tqdm.tqdm(dataloader, disable=not self.allow_print) as tqb:
@@ -305,8 +307,8 @@ class InplaceZeroTrainer:
             inputs=batch['input_ids'].cuda(),
             generation_config=generation_config
         )
-        logits = logits.tolist()
-        pred_texts = self.tokenizer.batch_decode(logits, skip_special_tokens=True)
+        predictions = logits.detach().cpu().numpy()
+        pred_texts = self.tokenizer.batch_decode(predictions, skip_special_tokens=True)
         return pred_texts
 
     def is_better(self, result_dict, key):
@@ -408,6 +410,10 @@ class InplaceZeroTrainer:
         )
 
     def save_model(self, index):
+        checkpoint_dir = sorted(Path(self.collie_args.output_dir).glob("checkpoint-*"))
+        if len(checkpoint_dir) >= self.collie_args.save_total_limit:
+            os.rmdir(checkpoint_dir[0])
+
         output_dir = os.path.join(self.collie_args.output_dir, f"checkpoint-{index}")
         if not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
@@ -452,5 +458,5 @@ class InplaceZeroTrainer:
 
             with open(os.path.join(output_dir, f'pytorch_model.bin'), 'wb') as f:
                 torch.save(state_dict, f)
-                print(f"Save model to {output_dir}")
+                print(f"Save model to {output_dir}.")
         torch.distributed.barrier()
