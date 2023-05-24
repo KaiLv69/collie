@@ -5,4 +5,4 @@ port=$(shuf -i25000-30000 -n1)
 
 # for zero trainer with inplace sgd
 WANDB_MODE=disabled \
-deepspeed --master_port "$port" --include localhost:2,3 zero_speed.py mcqa/hf_args_zero.yaml
+deepspeed --master_port "$port" --include localhost:2,3 inplace_zero_speed.py hf_args_zero.yaml
