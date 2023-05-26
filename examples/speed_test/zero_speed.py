@@ -1,7 +1,7 @@
 import sys
 
-sys.path.append('../..')
 sys.path.append('..')
+sys.path.append('../..')
 
 import os
 from dataclasses import dataclass
@@ -11,12 +11,24 @@ import wandb
 from torch.utils.data import DataLoader
 from datasets import load_from_disk
 from transformers import HfArgumentParser
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig, LlamaTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from transformers.deepspeed import HfDeepSpeedConfig
-
+from transformers import Trainer, TrainerCallback
 from mcqa.arguments import ModelArguments, DataArguments, MyCollieArguments
 from collie.trainer import InplaceZeroTrainer
 from collie.log import print
+
+
+class PrintMemory(TrainerCallback):
+    def __init__(self):
+        super().__init__()
+
+    def on_substep_end(self, args, state, control, **kwargs):
+        print(torch.cuda.max_memory_allocated() / 1024 / 1024 / 1024)
+
+    def on_step_end(self, args, state, control, **kwargs):
+        print(torch.cuda.max_memory_allocated() / 1024 / 1024 / 1024)
+
 
 
 @dataclass
@@ -43,7 +55,7 @@ class DataCollatorForSpeed:
 
 
 def speed_test():
-    torch.set_default_dtype(torch.float16)
+    torch.set_default_dtype(torch.bfloat16)
     parser = HfArgumentParser((ModelArguments, DataArguments, MyCollieArguments))
     if sys.argv[-1].endswith(".yaml"):
         model_args, data_args, collie_args = parser.parse_yaml_file(yaml_file=os.path.abspath(sys.argv[-1]))
@@ -68,7 +80,7 @@ def speed_test():
         local_files_only=True,
         config=config,
     )
-    tokenizer = LlamaTokenizer.from_pretrained(model_args.model_name_or_path)
+    tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
     tokenizer.pad_token_id = 0
 
     """
@@ -79,14 +91,13 @@ def speed_test():
     """
     init trainer
     """
-    trainer = InplaceZeroTrainer(
+    trainer = Trainer(
         model=model,
-        collie_args=collie_args,
+        args=collie_args,
         data_collator=DataCollatorForSpeed(tokenizer=tokenizer, max_length=data_args.max_length),
         train_dataset=dataset,
         tokenizer=tokenizer,
-        eval_dataset=None,
-        compute_metrics=None,
+        callbacks=[PrintMemory()]
     )
 
     # test train speed

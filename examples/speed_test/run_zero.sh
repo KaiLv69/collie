@@ -10,8 +10,8 @@ export CUDA_HOME="/remote-home/share/klv/cudas/cuda-12.0"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/remote-home/share/klv/cudas/cuda-12.0/lib64"
 
 
-WANDB_MODE=disabled \
-deepspeed --master_port "$port" --include localhost:0,1 inplace_zero_speed.py hf_args_zero.yaml
-
 #WANDB_MODE=disabled \
-#deepspeed --master_port "$port" --include localhost:0,1,2,3 zero_speed.py hf_args_zero.yaml
+#deepspeed --master_port "$port" --include localhost:0,1,2,3 inplace_zero_speed.py hf_args_zero.yaml
+
+WANDB_MODE=disabled \
+deepspeed --master_port "$port" --include localhost:0,1,2,3,4,5,6,7 zero_speed.py hf_args_zero.yaml

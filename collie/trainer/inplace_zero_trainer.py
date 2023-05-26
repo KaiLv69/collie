@@ -218,6 +218,9 @@ class InplaceZeroTrainer:
                     self.grad_func(0)
                     self.model.optimizer.get_param_coordinator(training=True).reset_step()
 
+                    # print(self.collie_args.local_rank, round(torch.cuda.memory_allocated()/1024/1024/1024, 2))
+                    print(self.collie_args.local_rank, round(torch.cuda.max_memory_allocated()/1024/1024/1024, 2))
+
                     tqb.set_postfix({'loss': loss.item()})
                     if self.allow_print:
                         self.wandb.log(
